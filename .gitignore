@@ -11,7 +11,7 @@ logs/
 crashes/
 
 # Temporary test configs
-accounts/temp/
+accounts/
 
 # Python cache
 __pycache__/
