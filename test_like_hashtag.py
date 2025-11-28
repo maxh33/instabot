@@ -1,3 +1,11 @@
+import collections
+import collections.abc
+# Patch for Python 3.10+ compatibility (must run before GramAddict imports)
+if not hasattr(collections, "Iterable"):
+    collections.Iterable = collections.abc.Iterable
+if not hasattr(collections, "Mapping"):
+    collections.Mapping = collections.abc.Mapping
+    
 #!/usr/bin/env python3
 """
 Simple test launcher that creates a temporary GramAddict config to
@@ -16,6 +24,8 @@ Notes:
 import os
 import sys
 import subprocess
+import datetime
+import logging
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -28,60 +38,104 @@ if not all([USERNAME, PASSWORD, DEVICE]):
     print("Error: missing INSTAGRAM_USER_A, INSTAGRAM_PASS_A or DEVICE_ID_A in .env")
     sys.exit(1)
 
-# Minimal config: small time limit, like only one post from hashtag 'python'
-# Note: GramAddict uses FLAT config format (no 'jobs:' wrapper)
-config = {
-    "username": USERNAME,
-    "device": DEVICE,                       # ADB device ID
-    "time-limit": 2,                        # minutes (short test)
-    "hashtag-likers-recent": ["python"],    # interact with #python likers
+# safer strategy: use Top posts for hashtag (Recent tab often unavailable)
+config_strategy = {
+    # Do NOT include 'username' here to avoid GramAddict attempting to
+    # change accounts at startup (we're already logged into the emulator).
+    "device": DEVICE,
+    "total-sessions": 1,
+    "hashtag-likers-top": ["python"],
     "likes-count": 1,
     "total-likes-limit": 1,
-    "follow-percentage": 0
+    "follow-percentage": 0,
 }
 
 os.makedirs(os.path.join("accounts", "temp"), exist_ok=True)
 config_path = os.path.abspath(os.path.join("accounts", "temp", "test_like.yml"))
 
 with open(config_path, "w", encoding="utf-8") as f:
-    # Write YAML config matching EXACT official format from GramAddict repo
-    # Note: spaces inside brackets are important! [ item1, item2 ] not [item1,item2]
-    f.write(f"username: {USERNAME}\n")
-    f.write(f"device: {DEVICE}\n")
-    f.write(f"hashtag-likers-recent: [ python ]\n")  # EXACT official format with spaces
-    f.write(f"likes-count: 1\n")
-    f.write(f"total-likes-limit: 1\n")
-    f.write(f"follow-percentage: 0\n")
-    f.write(f"total-interactions-limit: 1\n")
-    f.write(f"allow-untested-ig-version: true\n")
+    for key, value in config_strategy.items():
+        if isinstance(value, list):
+            f.write(f"{key}: [{', '.join(value)}]\n")
+        else:
+            f.write(f"{key}: {value}\n")
 
 print(f"Wrote temporary config to {config_path}")
-print("Launching GramAddict (this will open Instagram on the emulator/device)...")
+print("Checking ADB connection...")
+
+# Setup simple logging for this runner
+os.makedirs("logs", exist_ok=True)
+log_file = os.path.join("logs", "gramaddict_run.log")
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s | %(message)s",
+    handlers=[
+        logging.StreamHandler(sys.stdout),
+        logging.FileHandler(log_file, encoding="utf-8"),
+    ],
+)
+logging.info("Starting test_like_hashtag runner")
+
+
+# quick ADB check
+try:
+    adb_proc = subprocess.run(["adb", "devices"], capture_output=True, text=True, check=True)
+    devices_out = adb_proc.stdout + adb_proc.stderr
+    if DEVICE not in devices_out:
+        logging.warning(f"device '{DEVICE}' not listed by adb. adb output:\n{devices_out}")
+        logging.warning("Make sure BlueStacks ADB is enabled and connected (adb connect 127.0.0.1:PORT).")
+        # proceed anyway so user can see detailed GramAddict logs if they want
+except FileNotFoundError:
+    logging.error("adb not found in PATH. Ensure ADB is installed or BlueStacks ADB is enabled.")
+    sys.exit(1)
+except subprocess.CalledProcessError as exc:
+    logging.error(f"adb returned non-zero exit: {exc}")
+    # still proceed - write output
+    try:
+        logging.error(f"adb stdout: {exc.stdout}\nstderr: {exc.stderr}")
+    except Exception:
+        pass
+    sys.exit(1)
+except subprocess.CalledProcessError as exc:
+    print(f"adb returned non-zero exit: {exc}")
+    sys.exit(1)
+
+print("Launching GramAddict (will open Instagram on the emulator/device)...")
+
+# build env and locate gramaddict CLI in .venv
+env = os.environ.copy()
+project_root = os.path.dirname(os.path.abspath(__file__))
+env["PYTHONPATH"] = project_root + os.pathsep + env.get("PYTHONPATH", "")
+
+venv_scripts = os.path.join(project_root, ".venv", "Scripts")
+gramaddict_exe = os.path.join(venv_scripts, "gramaddict.exe")
+if not os.path.exists(gramaddict_exe):
+    print(f"Error: gramaddict.exe not found at {gramaddict_exe}")
+    print("Install GramAddict in the venv: .venv\\Scripts\\Activate then pip install gramaddict")
+    sys.exit(1)
 
 try:
-    # Call GramAddict using the venv's gramaddict.exe directly to avoid global conflicts
-    env = os.environ.copy()
-    project_root = os.path.dirname(os.path.abspath(__file__))
-    env["PYTHONPATH"] = project_root + os.pathsep + env.get("PYTHONPATH", "")
+    # Use global -v (verbose)
+    cmd = [gramaddict_exe, "-v", "run", "--config", config_path]
+    logging.info("Running: %s", " ".join(cmd))
+    proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, env=env)
+    # write combined output (stdout+stderr) already captured by FileHandler via logging
+    try:
+            with open(log_file, "a", encoding="utf-8") as lf:
+                lf.write("\n--- GramAddict output: %s ---\n" % datetime.datetime.now(datetime.timezone.utc).isoformat())
+            lf.write(proc.stdout or "")
+    except Exception as e:
+        logging.error("Failed to write gramaddict output to log file: %s", e)
 
-    # Get venv's Scripts directory - look for .venv in project root
-    # sys.executable might point to base Python, so we find venv manually
-    venv_scripts = os.path.join(project_root, ".venv", "Scripts")
-    gramaddict_exe = os.path.join(venv_scripts, "gramaddict.exe")
-
-    if not os.path.exists(gramaddict_exe):
-        print(f"Error: gramaddict.exe not found at {gramaddict_exe}")
-        print("Make sure GramAddict is installed in your active venv: pip install gramaddict")
-        sys.exit(1)
-
-    # Use simple config file approach (CLI args caused parser errors)
-    result = subprocess.run(
-        [gramaddict_exe, "run", "--config", config_path],
-        check=True,
-        capture_output=False,
-        env=env
-    )
-    print("\nTest run finished successfully.")
-except subprocess.CalledProcessError as exc:
-    print(f"\nGramAddict run failed with exit code {exc.returncode}")
-    sys.exit(exc.returncode)
+    if proc.returncode == 0:
+        logging.info("Test run finished successfully.")
+    else:
+        logging.error("GramAddict run failed with exit code %s", proc.returncode)
+        # show last 30 lines for quick debugging
+        if proc.stdout:
+            tail = "\n".join(proc.stdout.splitlines()[-30:])
+            logging.error("--- Last output lines ---\n%s", tail)
+        sys.exit(proc.returncode)
+except Exception as e:
+    logging.exception("Unexpected error running GramAddict: %s", e)
+    raise
