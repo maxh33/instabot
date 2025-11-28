@@ -1,0 +1,19 @@
+# Pinned dependencies for this project (tested with GramAddict 3.2.12)
+gramaddict==3.2.12
+python-dotenv==1.2.1
+PyYAML==6.0.1
+uiautomator2==2.16.14
+adbutils==0.16.2
+packaging==20.9
+colorama==0.4.4
+requests==2.31.0
+urllib3==1.26.18
+lxml==6.0.2
+xmltodict==1.0.2
+emoji==1.6.1
+apkutils2==1.0.0
+logzero==1.7.0
+langdetect==1.0.9
+
+# Note: install inside a dedicated virtual environment to avoid
+# conflicts with global tools like black, ipykernel, and pylint.
