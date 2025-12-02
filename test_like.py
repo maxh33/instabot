@@ -14,23 +14,46 @@ load_dotenv()
 ROOT = os.path.abspath(os.path.dirname(__file__))
 os.chdir(ROOT)
 
-CONFIG_PATH = os.path.join("accounts", "test_like_safe.yml")
-DEVICE = os.getenv("DEVICE", "127.0.0.1:21503")
+CONFIG_PATH = os.path.join("accounts", "test_like_enhanced.yml")
+DEVICE = os.getenv("DEVICE", "fbc9d1f30eb2")
 
-# Build YAML content dynamically so we can inject credentials from .env when available.
+# Build YAML content dynamically with enhanced human-like behavior
+# Uses 15 personalized hashtags for backend/infrastructure niche
 lines = [
-    "# Safe like-only config (committed)",
-    "# - Small limits for testing",
-    "# - If credentials exist in .env, they will be injected here for this run",
-    "# - follow-percentage set to 0 to avoid following",
+    "# Enhanced test config - 3-minute session with human-like behavior",
+    "# Personalized for backend/infrastructure niche",
     "debug: true",
     f"device: {DEVICE}",
-    "total-sessions: 1",
     "allow-untested-ig-version: true",
-    "hashtag-likers-top: [python]",
-    "likes-count: 1",
-    "total-likes-limit: 1",
-    "follow-percentage: 0",
+    "",
+    "# Mix of sources for variety (less robotic)",
+    "# Hashtags: Top likers (Instagram v313 doesn't have Recent tab)",
+    "hashtag-likers-top: [python, django, fastapi, backend, devops]",
+    "# Competitor accounts: Post likers",
+    "blogger-post-likers: [realpython, freecodecamp, thepracticaldev]",
+    "",
+    "# Session limits for ~3-minute test",
+    "total-likes-limit: 6",
+    "total-follows-limit: 2",
+    "total-interactions-limit: 8",
+    "total-successful-interactions-limit: 6",
+    "",
+    "# Human-like behavior (MORE randomization for less robotic feel)",
+    "likes-count: 1-3",
+    "likes-percentage: 50-80",
+    "follow-percentage: 30-50",
+    "stories-count: 0-2",
+    "stories-percentage: 20-50",
+    "watch-video-time: 5-30",
+    "watch-photo-time: 2-6",
+    "carousel-count: 0-3",
+    "carousel-percentage: 40-80",
+    "interact-percentage: 40-70",
+    "speed-multiplier: 0.75",
+    "",
+    "# Behavior controls",
+    "interactions-count: 3-5",
+    "skipped-list-limit: 5-8",
 ]
 
 # Prefer INSTAGRAM_USER_A / INSTAGRAM_PASS_A from .env, fall back to generic USERNAME/PASSWORD
