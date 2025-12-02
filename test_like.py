@@ -26,6 +26,7 @@ lines = [
     "debug: true",
     f"device: {DEVICE}",
     "total-sessions: 1",
+    "allow-untested-ig-version: true",
     "hashtag-likers-top: [python]",
     "likes-count: 1",
     "total-likes-limit: 1",
