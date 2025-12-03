@@ -134,12 +134,16 @@ def run_gramaddict(config_path: str, task_name: str, logger: logging.Logger, log
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="GramAddict task runner")
-    parser.add_argument("mode", choices=["growth", "cleanup"], help="Select which strategy to run")
+    parser.add_argument("mode", choices=["growth", "cleanup", "morning", "lunch", "evening", "extra"], help="Select which strategy to run")
     args = parser.parse_args()
 
     config_map = {
         "growth": os.path.join(ROOT, "accounts", "strategy_growth.yml"),
         "cleanup": os.path.join(ROOT, "accounts", "strategy_cleanup.yml"),
+        "morning": os.path.join(ROOT, "accounts", "session_morning.yml"),
+        "lunch": os.path.join(ROOT, "accounts", "session_lunch.yml"),
+        "evening": os.path.join(ROOT, "accounts", "session_evening.yml"),
+        "extra": os.path.join(ROOT, "accounts", "session_extra.yml"),
     }
 
     config_path = config_map[args.mode]
