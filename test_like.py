@@ -3,24 +3,51 @@ import sys
 import subprocess
 import datetime
 import logging
+import argparse
 from dotenv import load_dotenv
+from device_manager import DeviceManager, load_device_from_env
 
-# Safe, committed test runner for a single like from #python
-# - Writes `accounts/test_like_safe.yml`
-# - Runs the GramAddict CLI with verbose output and logs to `logs/gramaddict_test_like.log`
+# Enhanced test runner for Instagram bot
+# - Supports both USB (physical) and network (MEmu) devices
+# - Writes `accounts/test_like_enhanced.yml`
+# - Runs GramAddict with human-like behavior and debug logging
+#
+# Usage:
+#   python test_like.py                           # Uses DEVICE from .env
+#   python test_like.py --device fbc9d1f30eb2     # Specific USB device
+#   python test_like.py --device 127.0.0.1:21533  # MEmu emulator
+#   python test_like.py --account A               # Uses DEVICE_A from .env
 
 load_dotenv()
 
 ROOT = os.path.abspath(os.path.dirname(__file__))
 os.chdir(ROOT)
 
+# Parse command line arguments
+parser = argparse.ArgumentParser(description="Run Instagram bot test session")
+parser.add_argument("--device", help="Device ID (USB or network IP:port)", default=None)
+parser.add_argument("--account", help="Account suffix for multi-account (_A, _B, etc.)", default="")
+args = parser.parse_args()
+
+# Configuration
 CONFIG_PATH = os.path.join("accounts", "test_like_enhanced.yml")
-DEVICE = os.getenv("DEVICE", "fbc9d1f30eb2")
+
+# Load device ID: CLI arg > env var > default
+if args.device:
+    DEVICE = args.device
+else:
+    DEVICE = load_device_from_env(f"_{args.account}" if args.account else "")
+    if not DEVICE:
+        print("ERROR: No device specified. Set DEVICE in .env or use --device argument")
+        print("Examples:")
+        print("  python test_like.py --device fbc9d1f30eb2      # USB device")
+        print("  python test_like.py --device 127.0.0.1:21533   # MEmu emulator")
+        sys.exit(1)
 
 # Build YAML content dynamically with enhanced human-like behavior
 # Uses 15 personalized hashtags for backend/infrastructure niche
 lines = [
-    "# Enhanced test config - 3-minute session with human-like behavior",
+    "# Enhanced test config - 3-8 minute session with faster, natural behavior",
     "# Personalized for backend/infrastructure niche",
     "debug: true",
     f"device: {DEVICE}",
@@ -32,24 +59,24 @@ lines = [
     "# Competitor accounts: Post likers",
     "blogger-post-likers: [realpython, freecodecamp, thepracticaldev]",
     "",
-    "# Session limits for ~3-minute test",
-    "total-likes-limit: 6",
-    "total-follows-limit: 2",
-    "total-interactions-limit: 8",
-    "total-successful-interactions-limit: 6",
+    "# Session limits for ~3-8 minute test",
+    "total-likes-limit: 8",
+    "total-follows-limit: 3",
+    "total-interactions-limit: 12",
+    "total-successful-interactions-limit: 8",
     "",
-    "# Human-like behavior (MORE randomization for less robotic feel)",
-    "likes-count: 1-3",
-    "likes-percentage: 50-80",
-    "follow-percentage: 30-50",
-    "stories-count: 0-2",
-    "stories-percentage: 20-50",
-    "watch-video-time: 5-30",
-    "watch-photo-time: 2-6",
-    "carousel-count: 0-3",
-    "carousel-percentage: 40-80",
+    "# Human-like behavior (faster but natural)",
+    "likes-count: 1-2",
+    "likes-percentage: 50-70",
+    "follow-percentage: 25-40",
+    "stories-count: 0-1",
+    "stories-percentage: 15-35",
+    "watch-video-time: 3-15",
+    "watch-photo-time: 1-3",
+    "carousel-count: 0-2",
+    "carousel-percentage: 30-60",
     "interact-percentage: 40-70",
-    "speed-multiplier: 0.75",
+    "speed-multiplier: 1.5",
     "",
     "# Behavior controls",
     "interactions-count: 3-5",
@@ -95,24 +122,33 @@ def _mask_password(yaml_text: str) -> str:
 masked = _mask_password(YAML_CONTENT)
 logging.info("Config content:\n%s", masked)
 
-# Check adb
+# Check ADB and device connection (supports USB and network devices)
 logging.info("Checking ADB connection...")
-try:
-    adb_proc = subprocess.run(["adb", "devices"], capture_output=True, text=True, check=True)
-    devices_out = (adb_proc.stdout or "") + (adb_proc.stderr or "")
-    if DEVICE not in devices_out:
-        logging.warning("Device '%s' not listed by adb. adb output:\n%s", DEVICE, devices_out)
-        logging.warning("Make sure BlueStacks ADB is enabled and connected (adb connect 127.0.0.1:PORT).")
-except FileNotFoundError:
-    logging.error("adb not found in PATH. Ensure ADB is installed or BlueStacks ADB is enabled.")
+
+# Check if ADB is available
+if not DeviceManager.check_adb_available():
+    logging.error("adb not found in PATH. Ensure ADB is installed.")
     sys.exit(1)
-except subprocess.CalledProcessError as exc:
-    logging.error("adb returned non-zero exit: %s", exc)
-    try:
-        logging.error("adb stdout: %s\nstderr: %s", exc.stdout, exc.stderr)
-    except Exception:
-        pass
+
+# Create device manager and ensure connection
+dm = DeviceManager(DEVICE)
+logging.info(f"Device: {DEVICE} (type: {dm.device_type})")
+
+if not dm.ensure_connected(logging):
+    logging.error(f"Failed to connect to device {DEVICE}")
+
+    # List available devices
+    devices = DeviceManager.list_connected_devices()
+    if devices:
+        logging.info("Available devices:")
+        for dev_id, dev_type in devices:
+            logging.info(f"  - {dev_id} ({dev_type})")
+    else:
+        logging.info("No devices connected")
+
     sys.exit(1)
+
+logging.info(f"[OK] Device {DEVICE} is ready")
 
 # Locate GramAddict CLI in the local venv
 gramaddict_exe = os.path.join(ROOT, ".venv", "Scripts", "gramaddict.exe")
