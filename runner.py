@@ -3,11 +3,13 @@ import logging
 import os
 import subprocess
 import sys
+import tempfile
 from typing import Optional
 
 from dotenv import load_dotenv
 
-load_dotenv()
+# Override system env vars with .env values for flexible device switching
+load_dotenv(override=True)
 
 ROOT = os.path.abspath(os.path.dirname(__file__))
 DEVICE = os.getenv("DEVICE", "127.0.0.1:5555")
@@ -93,18 +95,58 @@ def run_gramaddict(config_path: str, task_name: str, logger: logging.Logger, log
         return 1
 
     abs_config = os.path.abspath(config_path)
+    temp_config_path = None
+
+    # Inject device and username from .env into config (flexible for USB/emulator switching and multi-account)
+    device = os.getenv("DEVICE")
+    username = USERNAME  # Already loaded at module level from INSTAGRAM_USER_A or INSTAGRAM_USER
+
+    if device or username:
+        # Read original config as text to preserve formatting (yaml.dump mangles lists!)
+        with open(abs_config, 'r', encoding='utf-8') as f:
+            original_lines = f.readlines()
+
+        # Inject device and username at the beginning (after initial comments)
+        new_lines = []
+        injected = False
+
+        for line in original_lines:
+            # Add device and username before first non-comment, non-empty line
+            if not injected and line.strip() and not line.strip().startswith('#'):
+                if username:
+                    new_lines.append(f"username: {username}\n")
+                if device:
+                    new_lines.append(f"device: {device}\n")
+                injected = True
+            new_lines.append(line)
+
+        # If no non-comment line found, add at the end
+        if not injected:
+            if username:
+                new_lines.append(f"\nusername: {username}\n")
+            if device:
+                new_lines.append(f"device: {device}\n")
+
+        # Write to temporary config file
+        temp_config = tempfile.NamedTemporaryFile(mode='w', suffix='.yml', delete=False, encoding='utf-8')
+        temp_config.writelines(new_lines)
+        temp_config.close()
+        temp_config_path = temp_config.name
+        abs_config = temp_config_path
+
+        if username:
+            logger.info("Injected username %s into config", username)
+        if device:
+            logger.info("Injected device %s into config", device)
+    else:
+        logger.warning("DEVICE and USERNAME not set in .env; will use values from config YAML if present.")
 
     cmd = [executable, "run", "--config", abs_config]
-
-    if USERNAME:
-        cmd.extend(["--username", USERNAME])
-    else:
-        logger.warning("INSTAGRAM_USER_A (or INSTAGRAM_USER) not set; relying on config username.")
-
-    if DEVICE:
-        cmd.extend(["--device", DEVICE])
-
     logger.info("Running command: %s", " ".join(cmd))
+
+    # Verify credentials are available
+    if not USERNAME:
+        logger.warning("INSTAGRAM_USER_A not set in .env; config must include username.")
 
     env = os.environ.copy()
     existing_pythonpath = env.get("PYTHONPATH", "")
@@ -123,6 +165,13 @@ def run_gramaddict(config_path: str, task_name: str, logger: logging.Logger, log
     stream_process_output(proc, log_path)
 
     proc.wait()
+
+    # Cleanup temp config file
+    if temp_config_path and os.path.exists(temp_config_path):
+        try:
+            os.unlink(temp_config_path)
+        except Exception as e:
+            logger.warning("Failed to cleanup temp config: %s", e)
 
     if proc.returncode == 0:
         logger.info("Task finished successfully.")
@@ -155,7 +204,9 @@ def main() -> int:
     if not os.path.exists(filters_path):
         logger.warning("filters.yml not found at %s; GramAddict will fall back to defaults.", filters_path)
 
-    if not check_adb(DEVICE, logger):
+    # Check device from .env (not cached global variable)
+    device = os.getenv("DEVICE")
+    if device and not check_adb(device, logger):
         return 1
 
     return run_gramaddict(config_path, args.mode, logger, log_path)
