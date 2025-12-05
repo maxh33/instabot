@@ -139,7 +139,13 @@ working-hours: [9-22]             # Only run 9am-10pm
 
 ## Python Version Compatibility
 
-Project runs on Python 3.13.5. The `distutils/` package provides backward compatibility shim since distutils was removed from stdlib in Python 3.12+. It forwards imports to `setuptools._distutils` to keep packages like `packaging` functional.
+**Python 3.13+ Support**: Project uses `packaging>=24.0` which removed the `distutils` dependency (stdlib distutils was removed in Python 3.12+).
+
+**Legacy Compatibility**: The `distutils/` shim directory remains for backward compatibility but is no longer required with `packaging>=24.0`.
+
+**Common Setup Issues (Linux/Python 3.13)**:
+- `ModuleNotFoundError: No module named 'pkg_resources'` → Install: `pip install setuptools`
+- `ModuleNotFoundError: No module named 'distutils'` → Fixed by `packaging>=24.0` in requirements.txt
 
 ## Logs and Output
 

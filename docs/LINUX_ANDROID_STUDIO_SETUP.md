@@ -296,7 +296,13 @@ source .venv/bin/activate
 
 # Install dependencies
 pip install -r requirements.txt
+
+# Note: If using uv package manager:
+# uv pip install -r requirements.txt
+# This automatically handles setuptools dependency for pkg_resources
 ```
+
+**Python 3.13 Note**: The project uses `packaging>=24.0` which is compatible with Python 3.13 (no distutils dependency). If you encounter `ModuleNotFoundError: No module named 'pkg_resources'`, install setuptools: `pip install setuptools`
 
 ### 5.3 Configure Environment
 

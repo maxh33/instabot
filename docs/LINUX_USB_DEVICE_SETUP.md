@@ -1,0 +1,392 @@
+# Linux USB Device Setup (Quick Start)
+
+Setup guide for running the Instagram bot on Linux with a physical Android device via USB.
+
+## Overview
+
+**Target Setup:**
+- **OS**: Linux (tested on Pop!_OS/Ubuntu)
+- **Device**: Mi A3 (fbc9d1f30eb2) via USB
+- **Instagram**: v313
+- **Python**: 3.13
+- **Scheduler**: Cron jobs
+
+---
+
+## Prerequisites
+
+### 1. Install ADB
+
+```bash
+# Ubuntu/Debian
+sudo apt update
+sudo apt install android-tools-adb android-tools-fastboot
+
+# Verify installation
+adb version
+```
+
+### 2. Setup USB Device
+
+**On Android device:**
+1. Enable Developer Options (tap Build Number 7 times)
+2. Enable USB Debugging
+3. Connect via USB cable
+4. Authorize USB debugging when prompted
+
+**Verify connection:**
+```bash
+# Should show your device
+adb devices
+
+# Expected output:
+# fbc9d1f30eb2    device
+```
+
+**Important**: Physical USB devices don't need `adb connect` (only emulators do).
+
+---
+
+## Installation
+
+### 1. Clone Repository
+
+```bash
+cd ~/repos
+git clone <repository-url> instabot
+cd instabot
+```
+
+### 2. Setup Python Environment
+
+```bash
+# Create virtual environment
+python3 -m venv .venv
+
+# Activate
+source .venv/bin/activate
+
+# Install dependencies
+pip install -r requirements.txt
+
+# If using uv (faster):
+# uv pip install -r requirements.txt
+```
+
+**Python 3.13 Compatibility Fix:**
+
+If you encounter errors during installation:
+
+```bash
+# Error: ModuleNotFoundError: No module named 'pkg_resources'
+pip install setuptools
+
+# Error: ModuleNotFoundError: No module named 'distutils'
+# Already fixed in requirements.txt (packaging>=24.0)
+```
+
+### 3. Configure Environment
+
+Create `.env` file:
+
+```bash
+nano .env
+```
+
+Add your credentials:
+
+```env
+# Instagram Credentials
+INSTAGRAM_USER_A=maxhaider.dev
+INSTAGRAM_PASS_A=your_password_here
+
+# Device Configuration (USB device ID)
+DEVICE=fbc9d1f30eb2
+```
+
+Save and exit (Ctrl+X, Y, Enter).
+
+---
+
+## Testing
+
+### Manual Test Run
+
+```bash
+# Activate venv
+source .venv/bin/activate
+
+# Run 3-minute test
+python test_like.py
+
+# Or test production strategy
+python runner.py growth
+```
+
+**Expected behavior:**
+- Opens Instagram on device
+- Performs 8 interactions over 3-8 minutes
+- Check logs: `tail -f logs/gramaddict_*.log`
+
+### Verify Device Access
+
+```bash
+# Check device connection
+adb devices
+
+# Verify Instagram is installed
+adb shell pm list packages | grep instagram
+
+# Test app launch
+adb shell am start -n com.instagram.android/.activity.MainTabActivity
+```
+
+---
+
+## Cron Setup
+
+### 1. Create Cron Schedule
+
+Edit crontab:
+
+```bash
+crontab -e
+```
+
+Add schedule (example: 3 sessions per day):
+
+```bash
+# Instagram Bot - Growth Sessions
+# Morning session: 9:30am
+30 9 * * * cd ~/repos/instabot && .venv/bin/python runner.py growth >> logs/cron.log 2>&1
+
+# Afternoon session: 2:15pm
+15 14 * * * cd ~/repos/instabot && .venv/bin/python runner.py growth >> logs/cron.log 2>&1
+
+# Evening session: 8:45pm
+45 20 * * * cd ~/repos/instabot && .venv/bin/python runner.py growth >> logs/cron.log 2>&1
+
+# Weekly cleanup: Sunday 11pm
+0 23 * * 0 cd ~/repos/instabot && .venv/bin/python runner.py cleanup >> logs/cron.log 2>&1
+```
+
+**Important**: Use absolute paths in cron:
+- ✅ `~/repos/instabot` or `/home/username/repos/instabot`
+- ✅ `.venv/bin/python` (relative to project dir)
+- ❌ Don't use `python` alone (cron has limited PATH)
+
+### 2. Verify Cron Jobs
+
+```bash
+# List installed jobs
+crontab -l
+
+# Check cron service status
+systemctl status cron
+```
+
+### 3. Monitor Execution
+
+```bash
+# Watch cron log
+tail -f ~/repos/instabot/logs/cron.log
+
+# Watch GramAddict log
+tail -f ~/repos/instabot/logs/gramaddict_*.log
+
+# Check last run
+ls -lt ~/repos/instabot/logs/
+```
+
+---
+
+## USB Device Best Practices
+
+### Keep Device Connected
+
+**Power saving issues:**
+1. Disable USB selective suspend on Linux
+2. Keep device charged (use USB hub with power)
+3. Prevent device sleep (use developer option "Stay awake")
+
+**udev rules (optional - for better USB stability):**
+
+Create `/etc/udev/rules.d/51-android.rules`:
+
+```bash
+sudo nano /etc/udev/rules.d/51-android.rules
+```
+
+Add:
+
+```
+# Xiaomi Mi A3
+SUBSYSTEM=="usb", ATTR{idVendor}=="2717", MODE="0666", GROUP="plugdev"
+```
+
+Reload:
+
+```bash
+sudo udevadm control --reload-rules
+sudo udevadm trigger
+```
+
+### Handle USB Disconnections
+
+**Check device before running:**
+
+Create wrapper script `safe_run.sh`:
+
+```bash
+#!/bin/bash
+cd ~/repos/instabot
+source .venv/bin/activate
+
+# Check device connection
+if ! adb devices | grep -q "fbc9d1f30eb2"; then
+    echo "[$(date)] ERROR: Device not connected" >> logs/cron.log
+    exit 1
+fi
+
+# Run bot
+python runner.py "$@"
+```
+
+Make executable:
+
+```bash
+chmod +x safe_run.sh
+```
+
+Update crontab to use wrapper:
+
+```bash
+30 9 * * * ~/repos/instabot/safe_run.sh growth >> ~/repos/instabot/logs/cron.log 2>&1
+```
+
+---
+
+## Monitoring & Maintenance
+
+### Daily Checks
+
+```bash
+# Check device connection
+adb devices
+
+# View recent logs
+tail -n 50 ~/repos/instabot/logs/gramaddict_*.log
+
+# Check cron execution
+grep "$(date +%Y-%m-%d)" ~/repos/instabot/logs/cron.log
+
+# View metrics
+cd ~/repos/instabot
+source .venv/bin/activate
+python metrics_analyzer.py maxhaider.dev
+```
+
+### Weekly Review
+
+```bash
+# Check for errors
+grep -i "error\|fail\|blocked" ~/repos/instabot/logs/gramaddict_*.log | tail -20
+
+# Review metrics
+python metrics_analyzer.py maxhaider.dev sources
+
+# Clean old logs (keep last 30 days)
+find ~/repos/instabot/logs -name "*.log" -mtime +30 -delete
+```
+
+### Troubleshooting
+
+**Device not showing:**
+```bash
+# Restart ADB server
+adb kill-server
+adb start-server
+
+# Check connection
+adb devices
+
+# Re-authorize on device if needed
+```
+
+**Bot not running from cron:**
+```bash
+# Check cron service
+systemctl status cron
+
+# View system cron logs
+journalctl -u cron | tail -20
+
+# Test cron command manually
+cd ~/repos/instabot && .venv/bin/python runner.py growth
+
+# Check permissions
+ls -la ~/repos/instabot/runner.py
+ls -la ~/repos/instabot/.venv/bin/python
+```
+
+**Instagram not opening:**
+```bash
+# Test ADB access
+adb shell pm list packages | grep instagram
+
+# Launch manually
+adb shell am start -n com.instagram.android/.activity.MainTabActivity
+
+# Check if logged in (open Instagram manually if needed)
+```
+
+---
+
+## Production Checklist
+
+Before going live:
+
+- [ ] ADB installed and working
+- [ ] Device connected (shows in `adb devices`)
+- [ ] USB debugging authorized on device
+- [ ] Python venv created and activated
+- [ ] Dependencies installed (no errors)
+- [ ] `.env` file configured
+- [ ] Manual test successful (`python test_like.py`)
+- [ ] Logs directory exists (`logs/`)
+- [ ] Cron jobs installed (`crontab -l`)
+- [ ] Device stays awake (developer option)
+- [ ] Device stays charged
+- [ ] Monitoring commands tested
+
+---
+
+## Key Differences from Windows
+
+| Aspect | Windows | Linux |
+|--------|---------|-------|
+| **Activate venv** | `.venv\Scripts\activate` | `source .venv/bin/activate` |
+| **Python in cron** | Not applicable | Use `.venv/bin/python` |
+| **Path separator** | `\` (backslash) | `/` (forward slash) |
+| **Cron** | Task Scheduler | `crontab -e` |
+| **Logs location** | Relative to project | Use absolute paths |
+| **ADB location** | Android SDK or `adb` in PATH | `android-tools-adb` package |
+
+---
+
+## Summary
+
+You now have:
+- ✅ Linux environment with USB device support
+- ✅ Python 3.13 compatibility (packaging>=24.0)
+- ✅ Bot configured for device fbc9d1f30eb2
+- ✅ Cron scheduling for automated runs
+- ✅ Monitoring and maintenance commands
+
+**Next Steps:**
+1. Run first manual test
+2. Install cron jobs
+3. Monitor first 3 days closely
+4. Adjust schedule as needed
+
+Good luck! 🚀
