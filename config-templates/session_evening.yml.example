@@ -1,0 +1,31 @@
+# Evening session - 5:00pm-7:00pm
+# Duration target: 45-60 minutes
+username: YOUR_USERNAME_HERE
+device: YOUR_DEVICE_ID_HERE
+
+# Different sources (data/cloud focus)
+hashtag-likers-top: [datascience, machinelearning, ai, cloudcomputing, serverless, bigdata, devtools]
+blogger-post-likers: [awscloud, googlecloud, azure, ibmcloud, digitalocean, heroku]
+
+# Session limits for ~30-45 min session
+# High interaction limit to account for private/empty accounts (~20% success rate)
+total-likes-limit: 50
+total-follows-limit: 15
+total-interactions-limit: 150  # Increased to allow ~30 successful interactions
+total-successful-interactions-limit: 30
+
+# Human-like behavior (slightly slower evening pace)
+likes-count: 1-2
+likes-percentage: 50-65
+follow-percentage: 25-35
+stories-count: 1-2
+stories-percentage: 35-55
+watch-video-time: 12-30
+watch-photo-time: 3-7
+carousel-count: 1-3
+carousel-percentage: 45-65
+interact-percentage: 45-65
+speed-multiplier: 1.0
+
+interactions-count: 4-7
+skipped-list-limit: 8-12

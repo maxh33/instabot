@@ -1,0 +1,31 @@
+# Lunch session - 12:00pm-2:00pm
+# Duration target: 45-60 minutes
+username: YOUR_USERNAME_HERE
+device: YOUR_DEVICE_ID_HERE
+
+# Different source mix for variety (Backend/DevOps niche)
+hashtag-likers-top: [linux, terraform, ansible, cicd, cloudnative, infrastructure, sre, microservices]
+blogger-post-likers: [docker, kubernetes, awscloud, googlecloud, devopscube, techworld_with_nana]
+
+# Session limits for ~45-60 min session
+# High interaction limit to account for private/empty accounts (~20% success rate)
+total-likes-limit: 60
+total-follows-limit: 20
+total-interactions-limit: 200  # Increased to allow ~40 successful interactions
+total-successful-interactions-limit: 40
+
+# Human-like behavior
+likes-count: 1-3
+likes-percentage: 55-70
+follow-percentage: 35-45
+stories-count: 2-4
+stories-percentage: 45-65
+watch-video-time: 10-25
+watch-photo-time: 3-6
+carousel-count: 1-4
+carousel-percentage: 55-75
+interact-percentage: 55-75
+speed-multiplier: 1.1
+
+interactions-count: 5-10
+skipped-list-limit: 10-18

@@ -1,0 +1,32 @@
+# Morning session - 9:00am-11:00am
+# Duration target: 45-60 minutes
+username: YOUR_USERNAME_HERE
+device: YOUR_DEVICE_ID_HERE
+
+# Mix of sources (hashtags are more stable on v300)
+hashtag-likers-top: [python, django, fastapi, backend, devops, aws, kubernetes, docker]
+blogger-post-likers: [realpython, freecodecamp, thepracticaldev, real.python, _kennethreitz, getpython]
+
+# Session limits for ~45-60 min session
+# High interaction limit to account for private/empty accounts (~20% success rate)
+total-likes-limit: 60
+total-follows-limit: 20
+total-interactions-limit: 200  # Increased to allow ~40 successful interactions
+total-successful-interactions-limit: 40
+
+# Human-like behavior (moderate speed)
+likes-count: 1-2
+likes-percentage: 60-75
+follow-percentage: 30-40
+stories-count: 1-3
+stories-percentage: 40-60
+watch-video-time: 8-20
+watch-photo-time: 2-5
+carousel-count: 1-3
+carousel-percentage: 50-70
+interact-percentage: 50-70
+speed-multiplier: 1.2
+
+# Behavior controls
+interactions-count: 4-8
+skipped-list-limit: 8-15
