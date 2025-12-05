@@ -1,0 +1,19 @@
+# Weekly cleanup strategy - FLAT format for GramAddict v3.2.12
+# Remove non-mutuals after follow-back window
+# Copy this to: accounts/strategy_cleanup.yml and customize
+
+# Device & Settings
+# TODO: Replace with your device ID (run 'adb devices' to find it)
+device: YOUR_DEVICE_ID_HERE  # Example: fbc9d1f30eb2 (USB) or 127.0.0.1:21533 (emulator)
+allow-untested-ig-version: true
+
+# Unfollow Strategy (FLAT format - no jobs wrapper)
+unfollow-non-followers: 150
+unfollow-delay: 5
+unfollow-skip-followed-list: true
+
+# Whitelist Protection
+# TODO: Add accounts you never want to unfollow
+whitelist:
+  - my_best_friend
+  - my_client_account

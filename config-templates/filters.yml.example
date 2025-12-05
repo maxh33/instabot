@@ -1,0 +1,17 @@
+# Global filters applied before any job runs
+# Copy this to: accounts/filters.yml
+
+skip_business: true
+skip_private: true
+skip_empty_profile_pic: true
+min_posts: 3
+min_followers: 50
+max_followers: 5000
+min_following: 50
+max_following: 1500
+
+# Blacklist promotional/spam accounts
+blacklisted-words: ["store", "shop", "promo", "discount", "nft", "crypto", "sex", "18+", "ad", "ads", "sponsor", "sponsored", "affiliate", "dropship"]
+
+# Optional: Require specific words in bio (uncomment and customize for your niche)
+# mandatory-words: ["dev", "code", "tech", "engineer", "student"]
