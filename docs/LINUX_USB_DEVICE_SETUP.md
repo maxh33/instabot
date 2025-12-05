@@ -59,12 +59,21 @@ cd instabot
 
 ### 2. Setup Python Environment
 
+**IMPORTANT: Use Python 3.11** (GramAddict v3.2.12 crashes on Python 3.13)
+
 ```bash
-# Create virtual environment
-python3 -m venv .venv
+# Install Python 3.11 (if not already installed)
+sudo apt update
+sudo apt install python3.11 python3.11-venv python3.11-dev
+
+# Create virtual environment with Python 3.11
+python3.11 -m venv .venv
 
 # Activate
 source .venv/bin/activate
+
+# Verify Python version (should be 3.11.x)
+python --version
 
 # Install dependencies
 pip install -r requirements.txt
@@ -73,17 +82,10 @@ pip install -r requirements.txt
 # uv pip install -r requirements.txt
 ```
 
-**Python 3.13 Compatibility Fix:**
-
-If you encounter errors during installation:
-
-```bash
-# Error: ModuleNotFoundError: No module named 'pkg_resources'
-pip install setuptools
-
-# Error: ModuleNotFoundError: No module named 'distutils'
-# Already fixed in requirements.txt (packaging>=24.0)
-```
+**Why Python 3.11?**
+- GramAddict v3.2.12 uses `collections.Iterable` (removed in Python 3.13)
+- Crash error on 3.13: `'Iter' object is not iterable`
+- Python 3.11 is the officially tested version
 
 ### 3. Configure Environment
 
@@ -108,6 +110,20 @@ Save and exit (Ctrl+X, Y, Enter).
 
 ---
 
+## Account Structure Setup
+
+**Fix the filter.json warning:**
+
+```bash
+# Create account-specific directory and copy filters
+chmod +x setup_account_structure.sh
+./setup_account_structure.sh
+```
+
+This creates `accounts/maxhaider.dev/filter.json` and eliminates the warning.
+
+---
+
 ## Testing
 
 ### Manual Test Run
@@ -119,13 +135,18 @@ source .venv/bin/activate
 # Run 3-minute test
 python test_like.py
 
-# Or test production strategy
-python runner.py growth
+# Or test session configs
+python runner.py morning   # Test morning session
+python runner.py lunch     # Test lunch session
+python runner.py evening   # Test evening session
+python runner.py extra     # Test extra session
+python runner.py growth    # Test growth strategy
+python runner.py cleanup   # Test cleanup (unfollows)
 ```
 
 **Expected behavior:**
 - Opens Instagram on device
-- Performs 8 interactions over 3-8 minutes
+- Performs interactions based on session config
 - Check logs: `tail -f logs/gramaddict_*.log`
 
 ### Verify Device Access
@@ -145,7 +166,32 @@ adb shell am start -n com.instagram.android/.activity.MainTabActivity
 
 ## Cron Setup
 
-### 1. Create Cron Schedule
+### Automated Installation (Recommended)
+
+```bash
+# Make script executable
+chmod +x install_cron_linux.sh
+
+# Review and customize PROJECT_DIR if needed
+nano install_cron_linux.sh
+
+# Install cron jobs
+./install_cron_linux.sh
+```
+
+**Installed schedule:**
+- **Morning**: 9:30am daily (session_morning.yml)
+- **Lunch**: 1:45pm daily (session_lunch.yml)
+- **Evening**: 6:15pm daily (session_evening.yml)
+- **Extra**: 3:30pm Mon/Wed/Fri (session_extra.yml)
+- **Cleanup**: 11:00pm Sunday (unfollows non-mutuals)
+
+**Expected activity:**
+- 3-4 sessions per day (150-200 interactions)
+- 90-120 likes per day
+- 30-40 follows per day
+
+### Manual Installation (Alternative)
 
 Edit crontab:
 
@@ -153,18 +199,21 @@ Edit crontab:
 crontab -e
 ```
 
-Add schedule (example: 3 sessions per day):
+Add schedule:
 
 ```bash
-# Instagram Bot - Growth Sessions
+# Instagram Bot - Automated Sessions
 # Morning session: 9:30am
-30 9 * * * cd ~/repos/instabot && .venv/bin/python runner.py growth >> logs/cron.log 2>&1
+30 9 * * * cd ~/repos/instabot && .venv/bin/python runner.py morning >> logs/cron.log 2>&1
 
-# Afternoon session: 2:15pm
-15 14 * * * cd ~/repos/instabot && .venv/bin/python runner.py growth >> logs/cron.log 2>&1
+# Lunch session: 1:45pm
+45 13 * * * cd ~/repos/instabot && .venv/bin/python runner.py lunch >> logs/cron.log 2>&1
 
-# Evening session: 8:45pm
-45 20 * * * cd ~/repos/instabot && .venv/bin/python runner.py growth >> logs/cron.log 2>&1
+# Evening session: 6:15pm
+15 18 * * * cd ~/repos/instabot && .venv/bin/python runner.py evening >> logs/cron.log 2>&1
+
+# Extra session: 3:30pm (Mon/Wed/Fri only)
+30 15 * * 1,3,5 cd ~/repos/instabot && .venv/bin/python runner.py extra >> logs/cron.log 2>&1
 
 # Weekly cleanup: Sunday 11pm
 0 23 * * 0 cd ~/repos/instabot && .venv/bin/python runner.py cleanup >> logs/cron.log 2>&1
@@ -175,7 +224,7 @@ Add schedule (example: 3 sessions per day):
 - ✅ `.venv/bin/python` (relative to project dir)
 - ❌ Don't use `python` alone (cron has limited PATH)
 
-### 2. Verify Cron Jobs
+### Verify Cron Jobs
 
 ```bash
 # List installed jobs
@@ -183,6 +232,9 @@ crontab -l
 
 # Check cron service status
 systemctl status cron
+
+# Test cron log
+tail -f ~/repos/instabot/logs/cron.log
 ```
 
 ### 3. Monitor Execution

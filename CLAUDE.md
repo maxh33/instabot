@@ -139,13 +139,20 @@ working-hours: [9-22]             # Only run 9am-10pm
 
 ## Python Version Compatibility
 
-**Python 3.13+ Support**: Project uses `packaging>=24.0` which removed the `distutils` dependency (stdlib distutils was removed in Python 3.12+).
+**Recommended: Python 3.11** (GramAddict v3.2.12 is tested with this version)
 
-**Legacy Compatibility**: The `distutils/` shim directory remains for backward compatibility but is no longer required with `packaging>=24.0`.
+**Windows (Python 3.13.5)**: Works with `packaging>=24.0` and `distutils/` compatibility shim
+- The `distutils/` shim forwards imports to `setuptools._distutils`
+- `packaging>=24.0` removes distutils dependency
 
-**Common Setup Issues (Linux/Python 3.13)**:
+**Linux (Python 3.11 REQUIRED)**: GramAddict v3.2.12 crashes on Python 3.13 with `'Iter' object is not iterable`
+- **Solution**: Use Python 3.11 on Linux systems
+- Install: `sudo apt install python3.11 python3.11-venv`
+- Create venv: `python3.11 -m venv .venv`
+
+**Common Setup Issues**:
 - `ModuleNotFoundError: No module named 'pkg_resources'` → Install: `pip install setuptools`
-- `ModuleNotFoundError: No module named 'distutils'` → Fixed by `packaging>=24.0` in requirements.txt
+- `'Iter' object is not iterable` (Linux) → Use Python 3.11 instead of 3.13
 
 ## Logs and Output
 
