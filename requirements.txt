@@ -4,7 +4,7 @@ python-dotenv==1.2.1
 PyYAML==6.0.1
 uiautomator2==2.16.14
 adbutils==0.16.2
-packaging>=24.0  # v24+ removes distutils dependency (Python 3.13 compatibility)
+packaging==20.9  # GramAddict 3.2.12 requires <21, compatible with Python 3.11
 colorama==0.4.4
 requests==2.31.0
 urllib3==1.26.18
