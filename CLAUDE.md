@@ -182,6 +182,96 @@ The project is designed for multiple accounts (INSTAGRAM_USER_A, INSTAGRAM_USER_
 - `strategy_growth.yml`: Daily growth targeting competitor post likers
 - `strategy_cleanup.yml`: Weekly cleanup unfollowing non-mutuals
 
+## Weekly Reporting System
+
+**Automated Telegram Reports**: The bot generates weekly performance reports and delivers them via Telegram using n8n webhook integration.
+
+**Report Contents**:
+- Weekly summary (sessions, interactions, likes, follows, success rate)
+- Daily breakdown with per-day metrics
+- Follower growth tracking
+- Top 5 performing sources (hashtags/accounts)
+- Filter effectiveness statistics
+
+**Architecture**: Python → n8n Webhook → Telegram
+1. Cron triggers `reports/generate_weekly_report.py` every Sunday at 11:30pm
+2. Script aggregates 7-day metrics using `metrics_analyzer.py`
+3. Sends JSON payload to secure n8n webhook (UUID-protected)
+4. n8n formats message and sends via Telegram bot
+
+**Environment Variables**:
+- `N8N_WEBHOOK_URL`: n8n webhook endpoint (use hashed URL for security)
+- `TELEGRAM_TOKEN`: Telegram bot token (optional, used by n8n)
+
+**Manual Testing**:
+```bash
+# Dry run (print JSON without sending)
+python reports/generate_weekly_report.py --dry-run
+
+# Test with custom period
+python reports/generate_weekly_report.py --days 3
+
+# Actual send (production)
+python reports/generate_weekly_report.py
+```
+
+**Failed Report Recovery**:
+If webhook fails, reports are saved to `reports/failed/` for manual retry.
+
+## Automation & Cron Setup
+
+**Linux Cron with Random Delays**: Sessions run with 0-15 minute random delays to prevent Instagram pattern detection.
+
+**Schedule**:
+```bash
+Morning:  9:30am-9:45am daily
+Lunch:    1:45pm-2:00pm daily
+Evening:  6:15pm-6:30pm daily
+Extra:    3:30pm-3:45pm Mon/Wed/Fri
+Cleanup:  11:00pm-11:15pm Sunday
+Report:   11:30pm Sunday (weekly)
+```
+
+**Installation**:
+```bash
+chmod +x install_cron_linux.sh
+./install_cron_linux.sh
+```
+
+The script automatically:
+- Backs up existing crontab
+- Removes old Instagram bot entries
+- Installs new jobs with random delays (`sleep $((RANDOM % 900))`)
+- Preserves other cron jobs
+
+**Monitoring**:
+```bash
+crontab -l                        # View installed jobs
+tail -f logs/cron.log             # Session logs
+tail -f logs/weekly_report.log    # Report logs
+```
+
+## Metrics & Analytics
+
+**Metrics Analyzer**: `metrics_analyzer.py` provides comprehensive analytics:
+- Session statistics (success rate, duration, interactions)
+- Account statistics (total interactions, current following)
+- Source performance (which hashtags/accounts work best)
+- Filter effectiveness (rejection rates, private/empty accounts)
+- Follower growth tracking
+
+**Usage**:
+```bash
+# View all metrics for an account
+python metrics_analyzer.py maxhaider.dev
+
+# Session stats for last 7 days
+python metrics_analyzer.py maxhaider.dev --days 7
+
+# Source performance
+python metrics_analyzer.py maxhaider.dev --source-performance
+```
+
 ## Key Learnings
 
 ### Instagram v313 Limitations
@@ -197,9 +287,11 @@ The project is designed for multiple accounts (INSTAGRAM_USER_A, INSTAGRAM_USER_
 - **Action variety**: Stories, carousels, videos, photos all engaged naturally
 - **Filter effectiveness**: 75% rejection rate (private/empty accounts) is normal
 - **Success rate**: 2-3 successful interactions per 8 attempts is expected
+- **Random cron delays**: 0-15 minute variance prevents Instagram pattern detection
 
 ### Performance Notes
 - Each interaction: 10-60 seconds depending on content type
 - 8 interactions typically complete in 3-8 minutes
 - Speed multiplier 0.75 provides good human-like pacing
 - Wide randomization ranges (e.g., 5-30s) prevent pattern detection
+- Weekly reports complete in <10 seconds
